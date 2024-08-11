@@ -1,6 +1,6 @@
 const User = require("../models/User");
 
-const generatePosition = async (user) => {
+const generatePosition = async (user) => {    // Generate the user's position
   try {
     const lastUser = await User.findOne()
       .sort({ position: -1 })
@@ -12,7 +12,7 @@ const generatePosition = async (user) => {
   }
 };
 
-const findMinPosition = async () => {
+const findMinPosition = async () => {   // Find the least position in database
   try {
     const minPositionResult = await User.findOne()
       .sort({ position: 1 })
@@ -25,7 +25,7 @@ const findMinPosition = async () => {
   }
 };
 
-const updatePosition = async () => {
+const updatePosition = async () => {    // Update all user's position according to the sequencial order 
   try {
     const minPosition = await findMinPosition();
     let position = Number(minPosition);

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Admin = require('../models/Admin');
 const bcrypt = require("bcrypt");
 
+// User's email and password verification from login page
 module.exports.loginVerify = async(req, res) => {
     const { email, password } = req.body;
     try {
@@ -19,6 +20,7 @@ module.exports.loginVerify = async(req, res) => {
     }
 }
 
+// Admin's email and password verification from admin-login page
 module.exports.adminVerify = async(req, res) => {
     const { email, password } = req.body;
     try {

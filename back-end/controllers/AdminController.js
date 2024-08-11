@@ -1,8 +1,9 @@
 const User = require('../models/User');
 const { updatePosition, generatePosition } = require('../services/PositionService');
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcrypt"); 
 const generateUniqueLink = require('../services/GenerateUniqueLink')
 
+// Delete all users from Admin Dashboard
 module.exports.deleteAllUsers = async (req, res) => {
     try {
         const result = await User.deleteMany({});
@@ -16,6 +17,7 @@ module.exports.deleteAllUsers = async (req, res) => {
       }
 };
 
+// Add user from Admin Dashboard
 module.exports.addUser = async(req, res) => {
   const {username, email, password } = req.body;
   if (!username || !email || !password) {
@@ -28,7 +30,7 @@ module.exports.addUser = async(req, res) => {
         .json({ success: false, message: "Email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10); // hash the password
     const newUser = new User({ username, email, password: hashedPassword, otp: "", otpExpiry: "", referralLink: generateUniqueLink() });
     await generatePosition(newUser);
     await newUser.save();
@@ -40,6 +42,7 @@ module.exports.addUser = async(req, res) => {
   }
 }
 
+// Delete a single user from Admin Dashboard
 module.exports.deleteSingleUser = async(req, res) => {
   const {userId} = req.params;
   try {
@@ -55,6 +58,7 @@ module.exports.deleteSingleUser = async(req, res) => {
   }
 }
 
+// Update the edited user's element from Admin Dashboard
 module.exports.saveUser = async(req, res) => {
   const {userId} = req.params;
   const { username, position, referrals} = req.body;

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 
+// Fetch all users from Database
 module.exports.fetchAllUsers = async (req, res) => {
     try {
         const users = await User.find().sort({ position: 1 });

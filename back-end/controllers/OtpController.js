@@ -4,6 +4,7 @@ const uniqueLink = require("../services/GenerateUniqueLink");
 const bcrypt = require("bcrypt");
 const { generatePosition, updatePosition } = require("../services/PositionService");
 
+// Generate OTP for newly signup user
 module.exports.generateOtp = async (req, res) => {
   const { username, email, password } = req.body;
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,7 +16,7 @@ module.exports.generateOtp = async (req, res) => {
       return res.json({ success: false, message: "Email already exists" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
+    const newUser = new User({      // Create a new user temporarily for OTP verification
       username,
       email,
       password: hashedPassword,
@@ -24,7 +25,7 @@ module.exports.generateOtp = async (req, res) => {
     });
 
     await newUser.save();
-    await sendEmail(email, "Your OTP Code", `Your OTP code is ${generatedOtp}`);
+    await sendEmail(email, "Your OTP Code", `Your OTP code is ${generatedOtp}`); // Call sendMail function to send OTP
     return res.json({
       success: true,
       message: "OTP sent to your email address!",
@@ -37,6 +38,7 @@ module.exports.generateOtp = async (req, res) => {
   }
 };
 
+// OTP verification from signup page
 module.exports.verifyOtp = async (req, res) => {
   const { email, otp, inviter } = req.body;
   try {
@@ -49,7 +51,7 @@ module.exports.verifyOtp = async (req, res) => {
     }
 
     if (new Date() > user.otpExpiry) {
-      await User.deleteOne({ email });
+      await User.deleteOne({ email });      // If OTP is timed out, then automatically delete the user from the database
       return res.json({ success: false, message: "OTP expired" });
     }
 
@@ -58,9 +60,10 @@ module.exports.verifyOtp = async (req, res) => {
     const link = uniqueLink();
     user.referralLink = link;
 
-    await generatePosition(user);
+    await generatePosition(user); // Call the generatePosition function
 
     if (inviter) {
+      // If someone signup using someone's referral link, the inviter position and referrals count will be updated
       user.inviter = inviter;
       const inviteFrom = await User.findOne({ referralLink: inviter });
       if (inviteFrom) {
@@ -72,11 +75,10 @@ module.exports.verifyOtp = async (req, res) => {
 
     await user.save();
     await updatePosition();
-
-    const firstPositionUser = await User.findOne({ position: 1 });
+    // Permanently store the user in database
+    const firstPositionUser = await User.findOne({ position: 1 }); // Check whether someone attain the position 1
     if (firstPositionUser) {
-      console.log(firstPositionUser.email);
-      await sendEmail(
+      await sendEmail( // Send email to user who achieve position 1
         firstPositionUser.email,
         "Congratulations!",
         "You have reached Position 1. Here is your coupon code: COUPON123"
