@@ -11,7 +11,7 @@ Follow these steps to manually set up the Waitlist Application:
 1. Clone the repository:
 
     ```
-    git clone https://github.com/Sasikumarb5566/Waitlist-application
+    git clone https://github.com/Sasikumarb5566/Waitlist-application.git
     ```
 
 2. Change into the frontend directory:
