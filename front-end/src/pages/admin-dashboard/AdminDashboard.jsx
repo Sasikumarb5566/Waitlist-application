@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import NotificationBar from "../../components/notification-bar/NotificationBar";
 import { fetchAllUsers } from '../../services/user-services/UserServices';
-import * as XLSX from 'xlsx';
 import { useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { adminUserAdd, deleteAllUser, deleteSingleUser, saveUser } from '../../services/admin-services/AdminServices';
+import { saveUsers, deleteUser, exportToExcel, deleteAllUsers, handleEdit as handleEditFunction } from '../../components/admin-dashboard/HandleFunction';
+
 import {
   faTrashAlt,
   faCopy,
@@ -15,6 +15,7 @@ import {
   faFileExport,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
+import AddUser from '../../components/admin-dashboard/AddUser';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
@@ -27,11 +28,6 @@ const AdminDashboard = () => {
     message: "",
     type: "",
     visible: false,
-  });
-  const [addUser, setAddUser] = useState({
-    username: "",
-    email: "",
-    password: "",
   });
 
   const filterUsers = (list, searchTerm) => {
@@ -73,53 +69,26 @@ const AdminDashboard = () => {
       5000
     );
   };
-
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(users);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
-    XLSX.writeFile(workbook, "users_data.xlsx");
-  };
   
   const hideNotification = () => {
     setNotification((prev) => ({ ...prev, visible: false }));
   };
 
+  const handleEdit = (userId, username, position, referrals) => {
+    handleEditFunction(userId, username, position, referrals, setEditMode, setUpdatedName, setUpdatedPosition, setUpdatedReferrals);
+  };
 
-
+  const handleDeleteAllUsers = async () => {
+    await deleteAllUsers(showNotification);
+  };
+  
   const handleChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const deleteAllUsers = async () => {
-    try {
-      const response = await deleteAllUser();
-      const user = response.data;
-      if (!user.success) {
-        showNotification(user.message, "error");
-        return;
-      }
-      showNotification("Successfully deleted all users", "success");
-    } catch (error) {
-      console.error("Error deleting user:", error);
-    }
-  };
-
-  const handleDelete = async(userId) => {
-    try {
-      const response = await deleteSingleUser(userId);
-      const user = response.data;
-      if(!user.success) {
-        showNotification(user.message, "error");
-        return;
-      }
-      showNotification(user.message, "success");
-      setUsers((prevUsers) => prevUsers.filter((user) => user._id !== userId));
-    }
-    catch(error) {
-      console.log("Error in deleting single user", "error")
-    }
-  }
+  const handleDelete = async (userId) => {
+    await deleteUser(userId, showNotification, setUsers);
+};
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -148,7 +117,6 @@ const AdminDashboard = () => {
     }
   }, [email]);
   
-
   if (!email) {
     return (
       <div className="bg-[#ecf0fe] flex flex-col gap-2 items-center justify-center min-h-screen text-center">
@@ -159,24 +127,6 @@ const AdminDashboard = () => {
       </div>
     );
   }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const response = await adminUserAdd(addUser);
-    const user = response.data;
-    if (!user.success) {
-      showNotification(user.message, "error");
-      return;
-    }
-    showNotification(user.message, "success");
-  }
-
-  const handleEdit = (userId, username, position, referrals) => {
-    setEditMode((prevState) => ({ ...prevState, [userId]: true }));
-    setUpdatedName((prevState) => ({ ...prevState, [userId]: username }));
-    setUpdatedPosition((prevState) => ({ ...prevState, [userId]: position }));
-    setUpdatedReferrals((prevState) => ({ ...prevState, [userId]: referrals }));
-  };
 
   const handleInvite = (userId, referralLink) => {
     const inviteLink = `http://localhost:5050/signup/?inviter=${referralLink}`;
@@ -207,40 +157,23 @@ const AdminDashboard = () => {
       [userId]: newReferrals,
     }));
   };
+
   const handleNameChange = (userId, newName) => {
     setUpdatedName((prevState) => ({ ...prevState, [userId]: newName }));
   };
 
   const handleSave = async (userId) => {
-    try {
-      const updatedData = {
-        username: updatedName[userId] ?? users.find(user => user._id === userId).username,
-        position: updatedPosition[userId] ?? users.find(user => user._id === userId).position,
-        referrals: updatedReferrals[userId] ?? users.find(user => user._id === userId).referrals,
-      };
-  
-      const response = await saveUser(userId, updatedData);
-      const updatedUser = response.data.data;
-  
-      if (!response.data.success) {
-        showNotification(response.data.message, "error");
-        return;
-      }
-
-      setUsers(prevUsers => 
-        prevUsers.map(user =>
-          user._id === userId ? { ...user, ...updatedUser } : user
-        )
-      );
-  
-      setEditMode(prevState => ({ ...prevState, [userId]: false }));
-      showNotification("User updated successfully. Refresh...", "success");
-    } catch (error) {
-      console.error("Error updating user:", error);
-      showNotification("Error updating user", "error");
-    }
+    saveUsers(userId,
+      updatedName,
+      updatedPosition,
+      updatedReferrals,
+      users,
+      setUsers,
+      setEditMode,
+      showNotification
+    );
   };
-  
+
   return (
     <div className="bg-[#ecf0fe] flex items-center justify-center min-h-screen relative">
       {notification.visible && (
@@ -251,61 +184,7 @@ const AdminDashboard = () => {
         />
       )}
       {isFormVisible && (
-        <div className="fixed inset-0 bg-gray-700 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-6 text-center">
-              Add New User
-            </h2>
-            <form onSubmit={handleSubmit}>
-              <input
-                type="text"
-                placeholder="Username"
-                name="username"
-                value={addUser.username}
-                onChange={(e) =>
-                  setAddUser({ ...addUser, username: e.target.value })
-                }
-                required
-                className="border-2 w-full p-3 rounded-full mb-4"
-              />
-              <input
-                type="email"
-                placeholder="abc@gmail.com"
-                name="email"
-                required
-                value={addUser.email}
-                onChange={(e) =>
-                  setAddUser({ ...addUser, email: e.target.value })
-                }
-                className="border-2 w-full p-3 rounded-full mb-4"
-              />
-              <input
-                type="password"
-                placeholder="Enter Password"
-                name="password"
-                required
-                value={addUser.password}
-                onChange={(e) =>
-                  setAddUser({ ...addUser, password: e.target.value })
-                }
-                className="border-2 w-full p-3 rounded-full mb-4"
-              />
-              <button
-                type="submit"
-                className="bg-[#4669ff] p-3 rounded-full text-white w-full hover:bg-[#3853cc] transition-all"
-              >
-                Add user
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsFormVisible(false)}
-                className="mt-4 w-full text-center text-red-500"
-              >
-                Cancel
-              </button>
-            </form>
-          </div>
-        </div>
+         <AddUser setIsFormVisible={setIsFormVisible} />
       )}
       <div
         className={`p-8 rounded-3xl shadow-xl md:max-w-2xl w-full max-w-sm text-black ${
@@ -336,7 +215,7 @@ const AdminDashboard = () => {
             <div>
               <button
                 className="bg-red-600 text-white p-2 mt-4 rounded-full px-3 md:absolute md:right-52 md:-top-5 text-sm"
-                onClick={deleteAllUsers}
+                onClick={ handleDeleteAllUsers}
               >
                 <FontAwesomeIcon icon={faTrash} className="mr-1" /> Delete
               </button>

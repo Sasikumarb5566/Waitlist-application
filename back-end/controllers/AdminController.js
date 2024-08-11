@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { updatePosition, generatePosition } = require('../services/PositionService');
 const bcrypt = require("bcrypt");
+const generateUniqueLink = require('../services/GenerateUniqueLink')
 
 module.exports.deleteAllUsers = async (req, res) => {
     try {
@@ -28,7 +29,7 @@ module.exports.addUser = async(req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, email, password: hashedPassword, otp: "", otpExpiry: "" });
+    const newUser = new User({ username, email, password: hashedPassword, otp: "", otpExpiry: "", referralLink: generateUniqueLink() });
     await generatePosition(newUser);
     await newUser.save();
     await updatePosition();
